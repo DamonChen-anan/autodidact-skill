@@ -109,7 +109,7 @@ Copy the four skills into Claude Code's skills directory:
 
 **macOS / Linux**
 ```bash
-git clone https://github.com/your-username/autodidact
+git clone https://github.com/DamonChen-anan/autodidact
 cd autodidact
 cp -r skills/autodidact  ~/.claude/skills/
 cp -r skills/questioner  ~/.claude/skills/
