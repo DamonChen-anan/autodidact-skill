@@ -118,7 +118,7 @@ cp -r skills/wiki        ~/.claude/skills/
 
 **Windows**
 ```powershell
-git clone https://github.com/your-username/autodidact
+git clone https://github.com/DamonChen-anan/autodidact
 cd autodidact
 Copy-Item -Recurse skills\autodidact  "$env:USERPROFILE\.claude\skills\"
 Copy-Item -Recurse skills\questioner  "$env:USERPROFILE\.claude\skills\"
