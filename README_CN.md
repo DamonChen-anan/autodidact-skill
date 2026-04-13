@@ -118,7 +118,7 @@ cp -r skills/wiki        ~/.claude/skills/
 
 **Windows**
 ```powershell
-git clone https://github.com/DamonChen-anan/autodidact
+git clone https://github.com/your-username/autodidact
 cd autodidact
 Copy-Item -Recurse skills\autodidact  "$env:USERPROFILE\.claude\skills\"
 Copy-Item -Recurse skills\questioner  "$env:USERPROFILE\.claude\skills\"
@@ -134,7 +134,7 @@ Copy-Item -Recurse skills\wiki        "$env:USERPROFILE\.claude\skills\"
 
 ### 开始研究
 
-在任意**空目录**下打开 Claude Code，运行：
+在任意目录下打开 Claude Code，运行：
 
 ```
 /autodidact <课题描述>
@@ -215,7 +215,7 @@ Ctrl+C 随时中断。下次在同一目录运行相同课题，从中断处自�
 完全支持。researcher 会同时生成中英文搜索关键词，分别检索中英文信息源。
 
 **Q：上下文快用完了怎么办？**
-autodidact 每轮结束时检测上下文用量，超过 50% 时提示执行 `/compact` 压缩，之后继续研究。
+autodidact 每轮结束时检测上下文用量，超过 50% 时自动执行 `/compact` 压缩并继续，无需任何操作。
 
 **Q：研究跑了很多轮但内容不够深入？**
 通常是课题描述太宽泛。加 `--background` 告知已有背景，或在 `user_questions.md` 插入更具体的问题引导方向。

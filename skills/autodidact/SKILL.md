@@ -9,6 +9,12 @@ args: "<课题描述> [--max-rounds 20] [--background <已知背景>]"
 
 协调 questioner、researcher、wiki 三个模块，驱动研究循环，直到达成终止条件。
 
+**执行原则（重要）：autodidact 是整个研究循环的主控，负责驱动循环直到终止条件满足。**
+
+- **连续执行**：每个 Step 内的所有工具调用（包括子模块启动的 subagent）必须等待完成后，再继续下一个 Step。Step 之间不能停止、不能等待用户输入。
+- **循环不中断**：一轮（Step 1-6）完成后，若终止条件未满足，立即进入下一轮，全程自动执行，无需用户确认。唯一允许暂停的时机是：① 终止条件满足后输出最终报告。上下文超过 50% 时自动执行 /compact，不中断循环。
+- **主控身份不转移**：即使通过 Skill tool 加载了子模块的指令，子模块的 SKILL.md 只是提供执行逻辑的参考，执行完毕后控制权仍在 autodidact，必须继续执行后续 Step。
+
 ---
 
 ## 目录结构约定
@@ -48,10 +54,9 @@ args: "<课题描述> [--max-rounds 20] [--background <已知背景>]"
 
 3. 初始化或读取 `outputs/research_state.json`：
    - 若文件不存在：创建新的研究状态（见数据结构）
-   - 若文件已存在且 topic 匹配：从上次中断处继续（读取已完成轮次）
-   - 若文件已存在但 topic 不匹配：提示用户是否覆盖
+   - 若文件已存在（无论 topic 是否匹配）：从上次中断处继续，将新课题描述追加到已有研究中。同一目录下的所有输入都视为同一套知识体系的延伸，共享 raw/、wiki/、outputs/。
 
-4. 向用户确认研究计划：
+4. 向用户**通报**研究计划（通报后立即进入研究循环，无需等待用户回应）：
    ```
    ## 开始研究：<课题描述>
    - 最大轮次：N
@@ -96,9 +101,11 @@ args: "<课题描述> [--max-rounds 20] [--background <已知背景>]"
 
 每轮执行以下步骤，完成后更新 research_state.json：
 
-### Step 1：调用 questioner
+### Step 1：问题生成（questioner 逻辑）
 
-传入：
+按 questioner 的逻辑执行问题生成（可通过 Skill tool 加载 questioner 获取详细执行逻辑）。
+
+传入上下文：
 - 课题描述
 - 当前轮次 N
 - 上一轮审计报告路径（`outputs/rounds/round_<N-1>_check.md`，第1轮无）
@@ -108,28 +115,42 @@ args: "<课题描述> [--max-rounds 20] [--background <已知背景>]"
 - 历史所有问题列表（`all_questions_ever`，含 id 和 text，去重用）
 - 用户背景（若有）
 
-等待输出：`outputs/rounds/round_N_questions.json`
+输出：`outputs/rounds/round_N_questions.json`
 
-### Step 2：调用 researcher
+**Step 1 完成后**：立即将 `current_round_progress.step1_done` 更新为 `true`，然后继续执行 Step 2。
+
+### Step 2：信息检索（researcher 逻辑）
+
+按 researcher 的逻辑执行信息检索（可通过 Skill tool 加载 researcher 获取详细执行逻辑）。
 
 传入：`outputs/rounds/round_N_questions.json`
 
-等待输出：raw/ 新增文件列表
+输出：raw/ 新增文件列表（每行一个路径）
 
-### Step 3：调用 wiki compile
+**Step 2 完成后**：立即将 `current_round_progress.step2_done` 更新为 `true`，然后继续执行 Step 3。
 
-传入：本轮新增的 raw/ 文件列表（`--files` 参数，增量编译）
-注意：若 Step 1 检测到用户贡献的新 raw 文件，也一并传入
+### Step 3：知识库编译（wiki compile 逻辑）
 
-等待输出：新增/更新的 wiki 主题列表
+按 wiki compile 的逻辑执行增量编译（可通过 Skill tool 加载 wiki 获取详细执行逻辑）。
 
-### Step 4：调用 wiki check（完整审计）
+传入：本轮新增的 raw/ 文件列表。将 Step 2 输出的文件路径列表转为逗号分隔字符串后传入（如 `raw/a.md,raw/b.md`）。
+注意：若 Step 1 检测到用户贡献的新 raw 文件，也一并追加到此列表。
+
+输出：新增/更新的 wiki 主题列表
+
+**Step 3 完成后**：立即将 `current_round_progress.step3_done` 更新为 `true`，然后继续执行 Step 4。
+
+### Step 4：知识审计（wiki check 逻辑）
+
+按 wiki check 的逻辑执行完整审计（可通过 Skill tool 加载 wiki 获取详细执行逻辑）。
 
 传入：
 - `outputs/rounds/round_N_questions.json`
 - `--round N`
 
-等待输出：`outputs/rounds/round_N_check.md`（问题覆盖状态 + 结构性审计）
+输出：`outputs/rounds/round_N_check.md`（问题覆盖状态 + 结构性审计）
+
+**Step 4 完成后**：立即将 `current_round_progress.step4_done` 更新为 `true`，然后继续执行 Step 5。
 
 ### Step 5：更新 research_state.json
 
@@ -137,37 +158,29 @@ args: "<课题描述> [--max-rounds 20] [--background <已知背景>]"
 - 本轮所有问题（含 id 和 text）追加到 `all_questions_ever`
 - 本轮处理的所有 raw 文件（含用户贡献的）追加到 `all_raw_files_processed`
 - 审计报告路径（`outputs/rounds/round_N_check.md`）
-- 终止判断结果（含 `overlap_ratio` 数值）
+- 终止判断结果（含 `overlap_ratio` 数值、`audit_issues_count` 数值）
+- **将 `current_round_progress` 设为 `null`**（标记本轮已完整完成）
 
 ### Step 6：终止判断
 
+**漏洞数定义**：`audit_issues_count` = wiki check 审计摘要中「知识漏洞数」+「partial 问题数」之和。矛盾和来源缺失单独记录但不计入漏洞数。
+
 终止条件**全部满足**才终止（AND 关系）：
 
-| 条件 | 判断方式 |
-|---|---|
-| 审计漏洞边际递减 | 本轮漏洞数 ≤ 上轮的 60%，或连续两轮漏洞数均 < 3 |
-| 无用户插入问题 | `user_questions.md` 无 pending 问题 |
-| 无新 raw 文件 | 用户没有贡献新素材 |
-| 问题重叠率 > 70% | questioner 输出的 `overlap_ratio` 字段值 > 0.7 |
+| 条件 | 第1轮 | 第2轮起 | 判断方式 |
+|---|---|---|---|
+| 审计漏洞边际递减 | 跳过（直接视为未满足） | 参与判断 | 本轮漏洞数 ≤ 上轮的 60%，或连续两轮漏洞数均 < 3 |
+| 无用户插入问题 | 参与判断 | 参与判断 | `user_questions.md` 无 pending 问题 |
+| 无新 raw 文件 | 参与判断 | 参与判断 | 用户没有贡献新素材 |
+| 问题重叠率 > 70% | 跳过（overlap_ratio 为 null） | 参与判断 | questioner 输出的 `overlap_ratio` > 0.7（null 视为未满足） |
 
 > **为什么用"边际递减"而非"绝对值 < 3"**：知识库越深，审计发现越少是自然规律。但如果用绝对值，审计工具稍微努力一点就能找出 3+ 条漏洞，导致循环永不终止。边际递减才能真正捕捉"已无明显新增价值"的信号。
 
 **硬上限**：达到 max_rounds 无条件终止
 
-**继续**：进入下一轮前，先执行 Step 7 上下文检查，然后 round N+1
+**继续**：检查当前上下文使用量，若超过 50% 则自动执行 `/compact` 压缩对话（无需用户确认），然后立即进入 round N+1。
 
-**终止**：执行收尾流程
-
-### Step 7：上下文检查（继续时执行）
-
-在进入下一轮之前，检查当前上下文使用量。若上下文已超过 50%，**提示用户**：
-
-```
-⚠️ 上下文已使用超过 50%，建议在继续前执行 /compact 压缩对话。
-   输入 /compact 后再继续，或直接回复"继续"跳过（可能在后续轮次中断）。
-```
-
-等待用户确认后继续。这能防止长时间研究循环因上下文耗尽而中断。
+**终止**：确认 state.json 中已记录本轮 `decision: terminate` 后，执行收尾流程。
 
 ---
 
@@ -219,6 +232,13 @@ args: "<课题描述> [--max-rounds 20] [--background <已知背景>]"
   "started_at": "2026-04-09T10:00:00",
   "max_rounds": 20,
   "status": "in_progress",
+  "current_round_progress": {
+    "round": 2,
+    "step1_done": true,
+    "step2_done": true,
+    "step3_done": false,
+    "step4_done": false
+  },
   "rounds": [
     {
       "round": 1,
@@ -256,11 +276,13 @@ args: "<课题描述> [--max-rounds 20] [--background <已知背景>]"
 }
 ```
 
+`current_round_progress` 在每个 Step 完成后立即更新，用于中断恢复时判断从哪步继续。一轮完整完成（Step 5 写入 rounds[]）后清空此字段（设为 null）。
+
 ---
 
 ## 注意事项
 
 - **课题边界**：每轮传给 questioner 时，明确提醒"围绕原始课题：<课题描述>"，防止范围漂移
-- **中断恢复**：如果某轮中途失败，下次启动时从该轮重新开始（不重复已完成的步骤）
+- **中断恢复**：启动时检查 `current_round_progress`，若非 null，说明上次在该轮中途中断。根据 `stepN_done` 字段跳过已完成的步骤，从第一个未完成的步骤继续，避免重复抓取和编译
 - **进度展示**：每轮开始时输出 `## 第 N 轮 / 最多 M 轮`，让用户了解进度
 - **用户可随时中断**：Ctrl+C 中断后，research_state.json 保留已完成轮次，下次可继续

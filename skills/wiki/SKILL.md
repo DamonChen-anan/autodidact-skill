@@ -13,13 +13,13 @@ args: "<compile|check> [questions_file] [--files file1,file2,...] [--round N]"
 
 ## 命令路由
 
-检查 `{{args}}`：
+根据调用上下文中的指令判断要执行哪个命令（不依赖特定参数格式，理解意图即可）：
 
-- `compile` 或为空且用户意图是编译 → 执行【Wiki 编译】
-- `check` → 执行【知识审计】
-  - 若附带 `questions_file` 参数 → 完整审计（问题覆盖 + 结构审计）
-  - 若无参数 → 纯结构审计
-- 否则 → 输出用法提示：
+- 意图是**编译/整理知识库**，或传入了 `--files` 参数 → 执行【Wiki 编译】
+- 意图是**审计/检查知识库**，或传入了 `check` 关键字 → 执行【知识审计】
+  - 若同时传入了问题列表文件路径 → 完整审计（问题覆盖 + 结构审计）
+  - 若未传入问题列表 → 纯结构审计
+- 意图不明确 → 输出用法提示：
   ```
   用法：
     /wiki compile [--files f1.md,f2.md]        —— 将 raw/ 素材编译为 wiki/
@@ -67,7 +67,8 @@ args: "<compile|check> [questions_file] [--files file1,file2,...] [--round N]"
    - 新建文章：X 篇（列出文件名）
    - 更新文章：X 篇（列出文件名）
    - 新增主题：[主题A, 主题B, ...]
-   - ⚠️ 待评估文件按中质量处理：[文件名列表]（若有）
+   - 待评估文件已按中质量处理，无需人工干预：[文件名列表]（若有）
+   → Step 3 完成，继续执行 Step 4（知识审计）
    ```
 
 **注意**：不要修改 raw/ 下的任何文件。
@@ -172,7 +173,9 @@ args: "<compile|check> [questions_file] [--files file1,file2,...] [--round N]"
 - 知识漏洞：X 个
 - 矛盾：X 个
 - 来源缺失：X 个
+- audit_issues_count: X （= 知识漏洞数 + partial 问题数，供 autodidact 判断终止条件）
 - 报告：outputs/rounds/round_N_check.md
+→ Step 4 完成，继续执行 Step 5（更新 research_state.json）
 ```
 
 **注意**：审计要有深度，每个发现都要具体到"哪篇文章的哪个部分"，这样 questioner 才能据此生成有针对性的问题。不要修改 raw/ 或 wiki/ 下的任何文件。

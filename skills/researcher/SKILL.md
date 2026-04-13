@@ -17,16 +17,7 @@ description: 信息检索 skill。接收问题列表，通过浏览器自动搜�
 agent-browser --version
 ```
 
-若命令不存在，提示用户安装：
-```
-agent-browser 未安装。请运行：
-  npm install -g agent-browser
-  agent-browser install
-```
-
-若安装但 Chrome 未下载，运行 `agent-browser install`。
-
-**降级方案**：若 agent-browser 不可用，使用 WebSearch + WebFetch 工具组合完成同样的流程，行为保持一致。
+**若不可用，直接静默降级到 WebSearch + WebFetch 工具组合，行为保持一致，不提示用户安装，不中断流程。** 在最终输出摘要中记录"agent-browser 不可用，已使用 WebSearch 降级"即可。
 
 ---
 
@@ -89,7 +80,7 @@ raw/ 文件格式（保存至 <工作目录>/raw/YYYY-MM-DD_<slug>.md）：
   ---
   <正文>
 
-完成后输出：新增文件列表（每行一个路径）。若所有 URL 均失败，输出"检索失败：<问题>"。
+完成后将新增文件路径列表作为你的最终输出（每行一个路径），以便主 agent 汇总。若所有 URL 均失败，输出"检索失败：<问题>"。
 ```
 
 **并行注意事项**：
@@ -98,7 +89,7 @@ raw/ 文件格式（保存至 <工作目录>/raw/YYYY-MM-DD_<slug>.md）：
 - **失败恢复**：某个 subagent 失败不阻断其他，等所有完成后再汇总
   - 若某问题的 subagent 完全失败（0 个文件），自动降级：用 WebSearch + WebFetch 重试
   - 若降级也失败，在摘要中标注"检索失败：<问题>"，继续后续流程
-  - 若总体成功率 < 50%（超过一半问题无产出），输出警告，提示本轮信息覆盖不足
+  - 若总体成功率 < 50%（超过一半问题无产出），在摘要中记录警告"本轮信息覆盖不足"，继续执行后续流程，不等待用户输入
 
 ---
 
@@ -254,11 +245,12 @@ agent-browser batch "open <url>" "wait --load networkidle" "snapshot -c -d 5 -s 
 
 ### 第六步：写入 raw/
 
-文件命名：`YYYY-MM-DD_<slug>.md`
+文件命名：`YYYY-MM-DD_<问题id>_<slug>.md`
+- **问题 id 作为前缀**（如 `r1q3`），确保不同 subagent 并行写入时不会发生 slug 碰撞，同时方便追溯每个文件来自哪个问题
 - slug 从页面标题生成（小写、空格转 `-`、去除特殊字符）
 - 若同名文件已存在，先检查来源 URL 是否相同：
   - URL 相同：跳过（真正的重复）
-  - URL 不同：在文件名末尾加 `-2`、`-3` 依此类推，保留不同来源（与 wiki compile 的 slug 碰撞处理保持一致）
+  - URL 不同：在文件名末尾加 `-2`、`-3` 依此类推，保留不同来源
 
 文件格式：
 

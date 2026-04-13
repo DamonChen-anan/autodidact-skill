@@ -136,11 +136,16 @@ description: 课题研究提问引擎。综合知识审计报告、用户插入�
     }
   ],
   "overlap_ratio": 0.3,
+  "deduped_questions": [
+    {"text": "被去重的问题文本", "matched_history_id": "r1q2"}
+  ],
   "incorporated_user_questions": ["用户插入的问题文本1", "用户插入的问题文本2"]
 }
 ```
 
-**`overlap_ratio`**：本轮问题与上一轮问题的语义重叠比例（0.0–1.0）。计算方式：与 `all_questions_ever` 中语义相似的问题数 / 本轮候选问题总数（过滤前）。第1轮固定为 `null`。autodidact 用此字段判断终止条件"问题重叠率 > 0.7"。
+**`overlap_ratio`**：本轮最终输出问题中，与 `all_questions_ever` 中任意历史问题语义相似的数量 / 本轮最终输出问题总数。分母统一用**输出数**（过滤后），不用候选数。第1轮固定为 `null`（无历史问题可比较）。autodidact 用此字段判断终止条件"问题重叠率 > 0.7"。
+
+**`deduped_questions`**：本轮被去重过滤掉的候选问题列表，每条记录被去重的问题文本及其匹配的历史问题 id，便于审查去重行为是否合理。
 
 `incorporated_user_questions` 字段列出本轮已纳入的用户插入问题原文，供 autodidact 更新 `user_questions.md` 的 `## 已处理` 区块。若本轮无用户插入问题，该字段为空数组。
 
@@ -156,6 +161,7 @@ description: 课题研究提问引擎。综合知识审计报告、用户插入�
 **[medium]** 问题文本
 
 已写入：outputs/rounds/round_N_questions.json
+→ Step 1 完成，继续执行 Step 2（信息检索）
 ```
 
 ---

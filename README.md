@@ -109,7 +109,7 @@ Copy the four skills into Claude Code's skills directory:
 
 **macOS / Linux**
 ```bash
-git clone https://github.com/DamonChen-anan/autodidact
+git clone https://github.com/your-username/autodidact
 cd autodidact
 cp -r skills/autodidact  ~/.claude/skills/
 cp -r skills/questioner  ~/.claude/skills/
@@ -135,7 +135,7 @@ Restart Claude Code and type `/autodidact` to verify the installation.
 
 ### Start researching
 
-Open Claude Code in any **empty directory** and run:
+Open Claude Code in a directory and run:
 
 ```
 /autodidact <topic>
@@ -216,7 +216,7 @@ Yes. It falls back to Claude's built-in WebSearch + WebFetch automatically. Some
 Yes. The researcher generates both Chinese and English search queries and retrieves from both language sources.
 
 **Q: What if the context window fills up?**
-autodidact checks context usage after each round. If it exceeds 50%, it prompts you to run `/compact` before continuing.
+autodidact checks context usage after each round. If it exceeds 50%, it automatically runs `/compact` and continues — no action needed from you.
 
 **Q: The wiki isn't deep enough after many rounds — what's wrong?**
 Usually the topic is too broad. Use `--background` to skip basics, or insert specific questions via `user_questions.md` to steer the research.
